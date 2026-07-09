@@ -88,7 +88,7 @@ Run the tests:
 python -m pytest tests/ -v
 ```
 
-### Using your own universe and dates
+### Using own universe and dates
 
 ```python
 from backtest import run_backtest, print_report
@@ -106,14 +106,3 @@ print_report(result)
 plot_equity_curve(result, "results.html")
 print(result.stats)  # dict of strategy + benchmark metrics
 ```
-
-## Caveats (things an interviewer might poke at)
-
-- **Survivorship bias:** the universe is today's tickers, so companies that were
-  delisted are absent. This flatters historical returns.
-- **No transaction costs / slippage:** rebalancing every month isn't free in
-  reality.
-- **Equal weighting** and a fixed top-10 are deliberately simple choices, not
-  optimized.
-- Returns use adjusted close (`auto_adjust=True`), so dividends and splits are
-  already baked in as total returns.
