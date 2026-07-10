@@ -68,5 +68,81 @@ def plot_equity_curve(result: BacktestResult, filename: str = "results.html") ->
         legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
     )
 
-    fig.write_html(filename, include_plotlyjs="cdn")
+    # Embed the full plotly.js library in the HTML (rather than linking a CDN)
+    # so the chart renders even with no internet / a blocked CDN. Makes the
+    # file larger (~3-4 MB) but fully self-contained and portable.
+    fig.write_html(filename, include_plotlyjs=True)
+    return filename
+
+
+def plot_cost_comparison(
+    result_off,
+    result_on,
+    filename: str = "results.html",
+) -> str:
+    """Plot costs-off vs costs-on strategy curves against SPY on one chart.
+
+    Three lines, all starting at $1 so they're directly comparable:
+    * the strategy with no execution costs (the flattering backtest),
+    * the same strategy after commissions + slippage (what you'd really get),
+    * SPY as the market benchmark.
+
+    The gap between the two strategy lines *is* the cost of trading. Returns the
+    path the HTML file was written to.
+    """
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=result_off.equity_curve.index,
+            y=result_off.equity_curve.values,
+            mode="lines",
+            name="Momentum (no costs)",
+            line=dict(color="#93c5fd", width=2, dash="dot"),
+            hovertemplate="%{x|%b %Y}<br>$%{y:.2f}<extra>No costs</extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=result_on.equity_curve.index,
+            y=result_on.equity_curve.values,
+            mode="lines",
+            name="Momentum (with costs)",
+            line=dict(color="#2563eb", width=2),
+            hovertemplate="%{x|%b %Y}<br>$%{y:.2f}<extra>With costs</extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=result_on.benchmark_curve.index,
+            y=result_on.benchmark_curve.values,
+            mode="lines",
+            name="SPY (S&P 500)",
+            line=dict(color="#6b7280", width=2, dash="dash"),
+            hovertemplate="%{x|%b %Y}<br>$%{y:.2f}<extra>SPY</extra>",
+        )
+    )
+
+    off = result_off.stats["strategy"]
+    on = result_on.stats["strategy"]
+    subtitle = (
+        f"No costs: {off['annualized_return']:.1%} CAGR, Sharpe {off['sharpe_ratio']:.2f}"
+        f" | With costs: {on['annualized_return']:.1%} CAGR, Sharpe {on['sharpe_ratio']:.2f}"
+    )
+
+    fig.update_layout(
+        title=dict(
+            text="Momentum Strategy vs SPY — Growth of $1<br>"
+            f"<sup>{subtitle}</sup>",
+            x=0.5,
+        ),
+        xaxis_title="Date",
+        yaxis_title="Value of $1 invested",
+        yaxis_tickprefix="$",
+        hovermode="x unified",
+        template="plotly_white",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+    )
+
+    fig.write_html(filename, include_plotlyjs=True)
     return filename
