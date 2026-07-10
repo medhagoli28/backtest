@@ -56,14 +56,59 @@ All metrics live in `metrics.py`, one clearly-commented function each.
   as a negative percentage. `min(equity / running_peak - 1)`. Answers "what's the
   worst loss I'd have had to sit through?"
 
+## Modeling execution costs
+
+A backtest that assumes you trade for free will always look better than reality.
+This engine models two real frictions (`costs.py`), both configurable arguments
+to `run_backtest()`:
+
+- **Commission** — a fraction of the value traded, charged on every buy and sell
+  (default `0.05%` of trade value).
+- **Slippage** — you don't fill at the close you see; buys fill a few basis
+  points higher and sells a few lower (default `5 bps`), because your order has
+  to cross the spread.
+
+Both scale with **turnover** — how much of the portfolio changes each month.
+Each rebalance, the cost is charged as a drag on that month's return and also
+tallied in dollars so you can see the total friction paid.
+
+## Why backtests lie
+
+The same momentum strategy, run with costs off vs. costs on (0.05% commission +
+5 bps slippage), 30-stock universe, 2015–2024:
+
+| Metric | Costs OFF | Costs ON |
+|--------|-----------|----------|
+| Total return | 769.64% | 737.57% |
+| CAGR | 27.74% | 27.20% |
+| Sharpe ratio | 1.27 | 1.24 |
+| Max drawdown | -28.41% | -28.72% |
+| Number of trades | 1,244 | 1,244 |
+
+Combined execution cost over the run: **1.73% of final portfolio value**, split
+evenly between commissions and slippage.
+
+**What it means:** the frictionless backtest overstates the strategy — ~32
+percentage points of total return and a Sharpe of 1.27 that's really 1.24
+evaporate once you pay to trade. The effect is modest *here* because this
+universe is large, liquid, and cheap to trade; on a higher-turnover strategy,
+smaller/less-liquid stocks, or a real taxable account, the same accounting would
+bite far harder. The lesson isn't "costs are small" — it's that **any headline
+backtest number should be quoted after costs, or it isn't real.**
+
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `backtest.py` | Core engine: data download, the momentum loop, benchmark, reporting. |
+
+| File | Purpose |
+|------|---------|
+| `backtest.py` | Core engine: data download, the momentum loop, cost accounting, benchmark, reporting. |
 | `metrics.py`  | Standalone metric functions (Sharpe, max drawdown, annualized return). |
-| `plot.py`     | Renders the strategy-vs-SPY equity curve to `results.html`. |
+| `costs.py`    | Execution-cost primitives: commission, slippage, turnover, weight drift. |
+| `plot.py`     | Renders the costs-off vs costs-on vs SPY equity curves to `results.html`. |
 | `tests/test_metrics.py` | Unit tests for the metric functions using hand-checked inputs. |
+| `tests/test_costs.py`   | Unit tests for the cost model + a regression test pinning costs-off to the original engine. |
 
 ## How to run it
 
